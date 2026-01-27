@@ -8,7 +8,12 @@ import (
 )
 
 func main() {
-	tr := p2p.NewTCPTransport(":3000")
+	tcpOpts := p2p.TCPTransportOps{
+		ListenAdder: ":3000",
+		Handshakefunc: p2p.NOPHandshakeFunc,
+		Decode: p2p.GOBDecoder{},
+	}
+	tr := p2p.NewTCPTransport(tcpOpts)
 
 	if err := tr.ListenAndAccept(); err != nil {
 		log.Fatal(err)
