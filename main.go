@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/girish/storage/p2p"
@@ -13,15 +12,15 @@ func main() {
 		Handshakefunc: p2p.NOPHandshakeFunc,
 		Decode: p2p.LengthPrefixDecoder{},
 	}
-	tr := p2p.NewTCPTransport(tcpOpts)
+	tr:= p2p.NewTCPTransport(tcpOpts)
 
-	if err := tr.ListenAndAccept(); err != nil {
-		log.Fatal(err)
+	serverOpts := FileServerOpts{
+		StorageRoot: "my_network_data", // This is where files will be saved later
+		Transport: tr,
 	}
+	server := NewFileServer(serverOpts)
 
-	fmt.Println("Listning on port 3000...")
-
-	select{
-		
+	if err := server.Start(); err != nil {
+		log.Fatal(err)
 	}
 }

@@ -36,12 +36,15 @@ type TCPTransport struct {
 
 	mu    sync.RWMutex
 	peers map[net.Addr]Peer
+
+	rpcCh chan RPC
 }
 
 func NewTCPTransport(opts TCPTransportOps) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOps: opts,
-		peers: make(map[net.Addr]Peer),
+		peers:           make(map[net.Addr]Peer),
+		rpcCh:           make(chan RPC, 1024),
 	}
 }
 
@@ -95,15 +98,18 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 				fmt.Printf("Client %s disconnected cleanly.\n", conn.RemoteAddr())
 				break // Exit the for-loop
 			}
-			
+
 			// If it's a different error, print it
 			fmt.Printf("TCP read error: %s\n", err)
 			break // Exit the loop on errors so the goroutine doesn't spin forever
 		}
-		
-		fmt.Printf("Received Message: %s\n", string(msg.Payload))
+
+		t.rpcCh <- RPC{
+			From: conn.RemoteAddr(),
+			Payload: msg.Payload,
+		}
 	}
-	
+
 	// Clean up when the loop ends
 	conn.Close()
 	fmt.Println("Connection closed and goroutine finished.")
@@ -120,4 +126,8 @@ func (p *TCPPeer) Send(b []byte) error {
 	msg := append(lengthBuf, b...)
 	_, err := p.conn.Write(msg)
 	return err
+}
+
+func (t *TCPTransport) Consume() <-chan RPC {
+	return t.rpcCh
 }
