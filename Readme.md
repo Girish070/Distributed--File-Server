@@ -20,20 +20,23 @@ This project focuses on understanding **networking, systems design, and distribu
 ## 🧱 Current Status
 
 ### ✅ Implemented
-- Custom **TCP transport layer**
-- Server-side `Listen` and `Accept` loop
-- Incoming connection handling
-- Manual testing using **Telnet**
-- Clean separation of transport logic
+- **Custom TCP Transport Layer:** Server-side `Listen` and `Accept` loop with clean interface decoupling.
+- **Message Framing:** Custom `LengthPrefixDecoder` to handle raw TCP byte streams reliably.
+- **Wire Protocol:** Structured binary message encoding (`DataMessage`) using Go's `encoding/gob`.
+- **Decoupled Architecture:** `FileServer` orchestrator that consumes messages from the networking layer via Go channels (`<-chan RPC`).
+- **Local Storage Engine:** Content Addressable Storage (CAS) implementation utilizing SHA-1 hashing to create optimized, deeply nested directory structures.
+- **Automated Testing:** In-memory network testing using `net.Pipe()`.
 
 ### 🔜 In Progress / Planned
-- Message framing (length-prefixed protocol)
-- Wire protocol (PUT / GET / DELETE)
-- Local file storage engine
-- Peer discovery & membership
+- File retrieval logic (GET commands)
+- File deletion logic (DELETE commands)
+- Peer discovery & routing (knowing which node has which file)
 - Data replication & fault tolerance
+- Graceful server shutdown & resource cleanup
 
 ---
 
-## 🏗️ Architecture (Early Stage)
-
+## 🏗️ Architecture 
+- **Transport Layer:** Handles raw TCP sockets and byte framing.
+- **Orchestrator (FileServer):** Parses RPCs and routes commands.
+- **Storage Engine:** Handles disk I/O and Content Addressable folder creation.
