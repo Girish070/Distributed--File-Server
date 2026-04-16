@@ -20,19 +20,17 @@ This project focuses on understanding **networking, systems design, and distribu
 ## 🧱 Current Status
 
 ### ✅ Implemented
-- **Custom TCP Transport Layer:** Server-side `Listen` and `Accept` loop with clean interface decoupling.
+- **Custom TCP Transport Layer:** Server-side `Listen`, `Accept`, and active `Dial` capabilities.
 - **Message Framing:** Custom `LengthPrefixDecoder` to handle raw TCP byte streams reliably.
-- **Wire Protocol:** Structured binary message encoding (`DataMessage`) using Go's `encoding/gob`.
-- **Decoupled Architecture:** `FileServer` orchestrator that consumes messages from the networking layer via Go channels (`<-chan RPC`).
-- **Local Storage Engine:** Content Addressable Storage (CAS) implementation utilizing SHA-1 hashing to create optimized, deeply nested directory structures.
-- **Automated Testing:** In-memory network testing using `net.Pipe()`.
+- **Wire Protocol:** Structured binary message encoding (`MessagePayload`) using Go's `encoding/gob` supporting PUT, GET, and DELETE commands.
+- **Decoupled Architecture:** `FileServer` orchestrator that consumes messages from the networking layer via Go channels.
+- **Local Storage Engine:** Content Addressable Storage (CAS) implementation utilizing SHA-1 hashing to create optimized, deeply nested directory structures, with full read/write/delete support.
+- **Peer Discovery:** Bootstrap node configuration allowing servers to automatically connect and form a P2P network.
 
 ### 🔜 In Progress / Planned
-- File retrieval logic (GET commands)
-- File deletion logic (DELETE commands)
-- Peer discovery & routing (knowing which node has which file)
-- Data replication & fault tolerance
+- Data replication & fault tolerance (broadcasting files to peers)
 - Graceful server shutdown & resource cleanup
+- File chunking for handling extremely large files
 
 ---
 
