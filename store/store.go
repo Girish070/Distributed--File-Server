@@ -3,8 +3,10 @@ package store
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"strings"
@@ -149,4 +151,13 @@ func (s *Store) Delete(key string) error {
 	}
 	log.Printf("Deleted file and cleaned up directories: %s", firstPathWithRoot)
 	return nil
+}
+
+// Has checks if a file already exists in the local CAS storage 
+func (s *Store) Has(key string) bool {
+	pathKey := s.PathTransformFunc(key)
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+
+	_, err := os.Stat(fullPathWithRoot)
+	return !errors.Is(err, fs.ErrNotExist)
 }

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  node1:
+    build: .
+    container_name: fs-node1
+    environment:
+      - LISTEN_ADDR=:3000
+      - STORAGE_ROOT=/data
+      - BOOTSTRAP_NODES=
+    ports:
+      - "3000:3000" # Expose to host machine on 3000
+    volumes:
+      - node1_data:/data
+
+  node2:
+    build: .
+    container_name: fs-node2
+    environment:
+      - LISTEN_ADDR=:3000
+      - STORAGE_ROOT=/data
+      - BOOTSTRAP_NODES=node1:3000 # Dial Node 1
+    ports:
+      - "4000:3000" # Expose to host machine on 4000
+    volumes:
+      - node2_data:/data
+    depends_on:
+      - node1
+
+  node3:
+    build: .
+    container_name: fs-node3
+    environment:
+      - LISTEN_ADDR=:3000
+      - STORAGE_ROOT=/data
+      - BOOTSTRAP_NODES=node1:3000 # Dial Node 1
+    ports:
+      - "5000:3000" # Expose to host machine on 5000
+    volumes:
+      - node3_data:/data
+    depends_on:
+      - node1
+
+volumes:
+  # Persistent virtual hard drives for each node
+  node1_data:
+  node2_data:
+  node3_data:

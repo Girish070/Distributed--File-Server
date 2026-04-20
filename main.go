@@ -2,7 +2,8 @@ package main
 
 import (
 	"log"
-	"time"
+	"os"
+	"strings"
 
 	"github.com/girish/storage/p2p"
 	"github.com/girish/storage/store"
@@ -23,6 +24,7 @@ func makeServer(listenAddr string, storageroot string, bootstrapNodes []string) 
 	localStore := store.NewStore(storeOpts)
 
 	serverOpts := FileServerOpts{
+		ListenAddr:     listenAddr,
 		StorageRoot:    storageroot,
 		Transport:      tr,
 		Store:          localStore,
@@ -32,22 +34,26 @@ func makeServer(listenAddr string, storageroot string, bootstrapNodes []string) 
 }
 
 func main() {
-	// 1. Create Node 1 (The "Seed" Node)
-	// It listens on :3000 and has no bootstrap nodes because it is the first one.
-	node1 := makeServer(":3000", "node1_data", nil)
-	
-	// Start Node 1 in the background
-	go func() {
-		log.Fatal(node1.Start())
-	}()
+	// 1. Read the network port from Docker (default to :3000)
+	listenAddr := os.Getenv("LISTEN_ADDR")
+	if listenAddr == "" {
+		listenAddr = ":3000"
+	}
 
-	// Give Node 1 a second to fully boot up its TCP listener
-	time.Sleep(1 * time.Second)
+	// 2. Read the storage folder from Docker
+	storageRoot := os.Getenv("STORAGE_ROOT")
+	if storageRoot == "" {
+		storageRoot = "network_data"
+	}
 
-	// 2. Create Node 2
-	// It listens on :4000, and we tell it to dial Node 1 when it starts!
-	node2 := makeServer(":4000", "node2_data", []string{":3000"})
-	
-	// Start Node 2 (this will block and keep the program running)
-	log.Fatal(node2.Start())
+	// 3. Read the comma-separated list of peers to dial on startup
+	bootstrapNodesStr := os.Getenv("BOOTSTRAP_NODES")
+	var bootstrapNodes []string
+	if bootstrapNodesStr != "" {
+		bootstrapNodes = strings.Split(bootstrapNodesStr, ",")
+	}
+
+	// 4. Spin up the single node
+	server := makeServer(listenAddr, storageRoot, bootstrapNodes)
+	log.Fatal(server.Start())
 }

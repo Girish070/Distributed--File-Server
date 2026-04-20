@@ -5,12 +5,14 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/girish/storage/p2p"
 	"github.com/girish/storage/store"
 )
 
 type FileServerOpts struct {
+	ListenAddr     string
 	StorageRoot    string //StorageRoot is the folder on hard drive where this node will save files
 	Transport      p2p.Transport
 	Store          *store.Store
@@ -26,14 +28,22 @@ type MessagePayload struct {
 
 type FileServer struct {
 	FileServerOpts
-	quitCh chan struct{}
+	peerLock sync.Mutex          //Thread sefty for concurrent connectons
+	peers    map[string]p2p.Peer //Maps addresses to active network connection
+	Ring     *p2p.HashRing       //The decentralized routing table
+	quitCh   chan struct{}
 }
 
 func NewFileServer(opts FileServerOpts) *FileServer {
-	return &FileServer{
+	fs := &FileServer{
 		FileServerOpts: opts,
+		peers:          make(map[string]p2p.Peer),
+		Ring:           p2p.NewHashring(),
 		quitCh:         make(chan struct{}),
 	}
+	fs.Ring.AddNode(opts.ListenAddr)
+
+	return fs
 }
 
 // Start boots up the transport layer and begins processing messages
@@ -80,11 +90,14 @@ func (s *FileServer) loop() {
 }
 
 func (s *FileServer) handleMessage(rpc p2p.RPC) {
+	s.registerPeer(rpc.Peer, rpc.From.String())
+
 	var msg MessagePayload
 	if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 		fmt.Printf("Failed to decode network payload: %s\n", err)
 		return
 	}
+
 	switch msg.Command {
 	case "PUT":
 		s.handlePutCommand(rpc.From.String(), msg)
@@ -106,6 +119,11 @@ func (s *FileServer) handlePutCommand(from string, msg MessagePayload) {
 		return
 	}
 	fmt.Println("File successfully saved to disk!")
+
+	err = s.broadcast(msg)
+	if err != nil {
+		fmt.Printf("Error broadcasting file: %s\n", err)
+	}
 }
 
 func (s *FileServer) handleGetCommand(rpc p2p.RPC) {
@@ -146,4 +164,34 @@ func (s *FileServer) handleDeleteCommand(from string, msg MessagePayload) {
 		return
 	}
 	fmt.Printf("File '%s' and its directories successfully deleted!\n", msg.Key)
+}
+
+func (s *FileServer) registerPeer(peer p2p.Peer, addr string) {
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	if _, exists := s.peers[addr]; !exists {
+		s.peers[addr] = peer
+		s.Ring.AddNode(addr)
+		fmt.Printf("New peer Added %s\n", addr)
+	}
+}
+
+func (s *FileServer) broadcast(msg MessagePayload) error {
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+
+	payloadBuff := new(bytes.Buffer)
+	if err := gob.NewEncoder(payloadBuff).Encode(msg); err != nil {
+		return err
+	}
+	payloadBytes := payloadBuff.Bytes()
+
+	for addr, peer := range s.peers {
+		fmt.Printf("📡 Broadcasting file '%s' to peer: %s\n", msg.Key, addr)
+		if err := peer.Send(payloadBytes); err != nil {
+			fmt.Printf("Failed to broadcast to peer %s: %s\n", addr, err)
+		}
+	}
+	return nil
 }
