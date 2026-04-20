@@ -61,6 +61,21 @@ func (t *TCPTransport) ListenAndAccept() error {
 	return nil
 }
 
+// Dial implement the Transport interface. It connects to a remote node
+// and treats that connection exactly like an incomming one
+func (t *TCPTransport) Dial(addr string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully dialed and connected to peer: %s\n", addr)
+
+	go t.handleConn(conn)
+
+	return nil
+}
+
 func (t *TCPTransport) startAcceptLoop() {
 	for {
 		conn, err := t.listener.Accept()
@@ -105,8 +120,9 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 		}
 
 		t.rpcCh <- RPC{
-			From: conn.RemoteAddr(),
+			From:    conn.RemoteAddr(),
 			Payload: msg.Payload,
+			Peer:    peer,
 		}
 	}
 
@@ -130,4 +146,11 @@ func (p *TCPPeer) Send(b []byte) error {
 
 func (t *TCPTransport) Consume() <-chan RPC {
 	return t.rpcCh
+}
+
+func (t *TCPTransport) Close() error {
+	if t.listener != nil {
+		return t.listener.Close()
+	}
+	return nil
 }

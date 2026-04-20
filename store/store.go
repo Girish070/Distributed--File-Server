@@ -3,8 +3,10 @@ package store
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"strings"
@@ -121,4 +123,41 @@ func (s *Store) WriteStream(key string, r io.Reader) error {
 
 	log.Printf("Written (%d) bytes to the disk: %s", n, fullPathWithRoot)
 	return nil
+}
+
+// ReadStream locates the file by its key and returns a stream to read it
+// Note: it returns an io.ReadCloser so the caller is responsible for calling close() when finished!
+func (s *Store) ReadStream(key string) (io.ReadCloser, error) {
+	//1 Calculate the exact path using CAS function
+	pathKey := s.PathTransformFunc(key)
+
+	//2 Combine it with root directory
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+
+	// Open the file and return Both the stream and the error
+	return os.Open(fullPathWithRoot)
+}
+
+// Delete completely removes the file and its nested CAS directories from the disk
+func (s *Store) Delete(key string) error {
+	pathKey := s.PathTransformFunc(key)
+
+	//Delete from the root of the hash to clean up all empty folders
+	firstPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FirstPathName())
+
+	err := os.RemoveAll(firstPathWithRoot)
+	if err != nil {
+		return err
+	}
+	log.Printf("Deleted file and cleaned up directories: %s", firstPathWithRoot)
+	return nil
+}
+
+// Has checks if a file already exists in the local CAS storage 
+func (s *Store) Has(key string) bool {
+	pathKey := s.PathTransformFunc(key)
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+
+	_, err := os.Stat(fullPathWithRoot)
+	return !errors.Is(err, fs.ErrNotExist)
 }

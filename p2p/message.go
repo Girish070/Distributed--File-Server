@@ -5,6 +5,7 @@ import "net"
 type RPC struct {
 	From net.Addr
 	Payload []byte
+	Peer Peer
 }
 
 type Message struct {
